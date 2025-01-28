@@ -35,5 +35,5 @@ Ce projet est une interface web en temps réel permettant de surveiller les stat
    git clone <url-du-repo>
    cd Monitor-PI
 
-### /!_ Les captures réseaux ne sont pas au points et peuvent DDOS votre box internet.... /!\
+### /!\ Les captures réseaux ne sont pas au points et peuvent DDOS votre box internet.... /!\
 - WORK-IN-PROGRESS
