@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1024, height=600, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Monitoring Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    h2 {
+      font-size: 12px;
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 5px;
+    }
+
+    .container {
+      display: grid;
+      width: 1024px;
+      height: 600px;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 5px;
+      padding: 5px;
+    }
+
+    .section {
+      padding: 5px;
+      background: #2c2c2c;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 80px;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      height: 100%;
+      overflow-y: auto;
+      font-size: 10px;
+    }
+
+    ul li {
+      padding: 2px 0;
+      border-bottom: 1px solid #444;
+    }
+
+    .large-section {
+      grid-column: 7 / 10;
+      grid-row: 2 / 6;
+    }
+
+    .small-section {
+      grid-column: span 3;
+      grid-row: span 2;
+    }
+
+    .ascii-art {
+      text-align: center;
+      font-family: monospace;
+      color: #00ff00;
+      margin-bottom: 5px;
+      white-space: pre;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="section" style="grid-column: 1 / 10; grid-row: 1;">
+      <pre class="ascii-art">
+___  ___            _ _            ______ _____
+|  \/  |           (_) |           | ___ \_   _|
+| .  . | ___  _ __  _| |_ ___  _ __| |_/ / | |
+| |\/| |/ _ \| '_ \| | __/ _ \| '__|  __/  | |
+| |  | | (_) | | | | | || (_) | |  | |    _| |_
+\_|  |_/\___/|_| |_|_|\__\___/|_|  \_|    \___/
+      </pre>
+    </div>
+
+    <div class="section small-section" style="grid-column: 1 / 4; grid-row: 2 / 4;">
+      <h2>Température CPU/GPU</h2>
+      <canvas id="tempChart"></canvas>
+    </div>
+    <div class="section small-section" style="grid-column: 1 / 4; grid-row: 4 / 6;">
+      <h2>Débit Réseau</h2>
+      <canvas id="netChart"></canvas>
+    </div>
+    <div class="section small-section" style="grid-column: 4 / 7; grid-row: 2 / 4;">
+      <h2>Utilisation CPU/GPU</h2>
+      <canvas id="usageChart"></canvas>
+    </div>
+    <div class="section small-section" style="grid-column: 4 / 7; grid-row: 4 / 6;">
+      <h2>Utilisation RAM</h2>
+      <canvas id="ramUsageChart"></canvas>
+    </div>
+
+    <div class="section large-section">
+      <h2>Analyse Réseau</h2>
+      <ul id="packet-data"></ul>
+    </div>
+  </div>
+
+  <script>
+    const maxHistory = 75;
+
+    const tempChart = new Chart(document.getElementById('tempChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'CPU Temp (°C)', data: [], borderColor: 'red' }, { label: 'GPU Temp (°C)', data: [], borderColor: 'blue' }] }
+    });
+
+    const netChart = new Chart(document.getElementById('netChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'Upload (KB/s)', data: [], borderColor: 'green' }, { label: 'Download (KB/s)', data: [], borderColor: 'purple' }] }
+    });
+
+    const usageChart = new Chart(document.getElementById('usageChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'CPU Usage (%)', data: [], borderColor: 'orange' }, { label: 'GPU Usage (%)', data: [], borderColor: 'cyan' }] }
+    });
+
+    const ramUsageChart = new Chart(document.getElementById('ramUsageChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'RAM Usage (%)', data: [], borderColor: 'yellow' }] }
+    });
+
+    async function updateData() {
+      const response = await fetch('/data');
+      const data = await response.json();
+      const timeLabel = new Date().toLocaleTimeString();
+
+      function updateChart(chart, datasets) {
+        chart.data.labels.push(timeLabel);
+        datasets.forEach((dataset, index) => {
+          chart.data.datasets[index].data.push(dataset);
+        });
+
+        if (chart.data.labels.length > maxHistory) {
+          chart.data.labels.shift();
+          chart.data.datasets.forEach(dataset => dataset.data.shift());
+        }
+
+        chart.update();
+      }
+
+      updateChart(tempChart, [data.cpuTemp[data.cpuTemp.length - 1], data.gpuTemp[data.gpuTemp.length - 1]]);
+      updateChart(netChart, [data.upload[data.upload.length - 1], data.download[data.download.length - 1]]);
+      updateChart(usageChart, [data.cpuUsage[data.cpuUsage.length - 1], data.gpuUsage[data.gpuUsage.length - 1]]);
+      updateChart(ramUsageChart, [data.ramUsage[data.ramUsage.length - 1]]);
+
+      const packetData = document.getElementById('packet-data');
+      packetData.innerHTML = '';
+      data.packets.forEach(packet => {
+        const entry = document.createElement('li');
+        entry.textContent = packet;
+        packetData.appendChild(entry);
+      });
+    }
+
+    setInterval(updateData, 2000);
+  </script>
+</body>
+</html>
