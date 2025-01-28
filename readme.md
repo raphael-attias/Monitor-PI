@@ -32,7 +32,7 @@ Ce projet est une interface web en temps réel permettant de surveiller les stat
 
 1. Clonez le dépôt :
    ```bash
-   git clone <url-du-repo>
+   git clone https://github.com/raphael-attias/Monitor-PI
    cd Monitor-PI
 
 ### /!\ Les captures réseaux ne sont pas au points et peuvent DDOS votre box internet.... /!\
